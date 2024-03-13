@@ -30,8 +30,10 @@ enum {
 /**********************
  *  STATIC VARIABLES
  **********************/
-static nbgl_layout_t *layoutContext;
-static uint8_t        currentPage;
+static nbgl_layout_t    *layoutContext;
+static uint8_t           currentPage;
+static const char *const INFO_TYPES[]    = {"Version", "Developer"};
+static const char *const INFO_CONTENTS[] = {APPVERSION, "Ledger"};
 
 /**********************
  *      VARIABLES
@@ -122,6 +124,12 @@ static void displaySettings(void)
     if (currentPage == 0) {
         nbgl_layoutAddSwitch(layoutContext, &switchInfo);
         nbgl_layoutAddSeparationLine(layoutContext);
+    }
+    else {
+        for (uint8_t i = 0; i < 2; i++) {
+            nbgl_layoutAddText(layoutContext, INFO_TYPES[i], INFO_CONTENTS[i]);
+            nbgl_layoutAddSeparationLine(layoutContext);
+        }
     }
 
     nbgl_layoutDraw(layoutContext);

@@ -35,6 +35,7 @@ typedef struct {
     uint8_t currentPage;
     uint8_t nbPages;
     uint8_t firstNoteIndexInPage;
+    uint8_t selectedNoteIndex;
 } ListContext_t;
 
 /**********************
@@ -73,17 +74,18 @@ static uint8_t getNbPagesTotal(uint8_t nbTotalNotes)
     uint8_t nbPages          = 0;
     uint8_t nbRemainingNotes = nbTotalNotes;
     uint8_t nbNotesInPage;
-    uint8_t i = 0;
 
-    while (i < nbTotalNotes) {
-        // upper margin
+    if (nbTotalNotes == 0) {
+        return 1;
+    }
+    while (nbRemainingNotes > 0) {
         nbNotesInPage = getNbNotesInPage(nbRemainingNotes, CONTENT_AREA_HEIGHT);
-        // if it is supposed to be the last page (of more than 1 page)
-        // nav bar
-        if ((nbPages > 0) && (nbRemainingNotes == nbNotesInPage)) {
-            nbNotesInPage = getNbNotesInPage(nbRemainingNotes, CONTENT_AREA_HEIGHT - 40);
+        // if we already know that there are more than 1 page, or it at the first page
+        // all notes cannot be displayed, it mean that there will be a nav bar
+        if ((nbPages > 0) || (nbRemainingNotes > nbNotesInPage)) {
+            nbNotesInPage
+                = getNbNotesInPage(nbRemainingNotes, CONTENT_AREA_HEIGHT - SIMPLE_FOOTER_HEIGHT);
         }
-        i += nbNotesInPage;
         nbRemainingNotes -= nbNotesInPage;
         nbPages++;
     }
@@ -116,9 +118,32 @@ static uint8_t getNotesForPage(uint8_t  nbTotalNotes,
     return nbPages;
 }
 
+// gets the number of notes and the index of the first note fitting in the given page
+static uint8_t getPageForNoteIndex(uint8_t nbTotalNotes, uint8_t noteIndex, uint16_t maxHeight)
+{
+    uint8_t nbPages          = 0;
+    uint8_t nbRemainingNotes = nbTotalNotes;
+    uint8_t nbNotesInPage;
+    uint8_t i = 0;
+    ;
+
+    while (i < nbTotalNotes) {
+        // upper margin
+        nbNotesInPage = getNbNotesInPage(nbRemainingNotes, maxHeight);
+        i += nbNotesInPage;
+        if (i >= noteIndex) {
+            return nbPages;
+        }
+        nbRemainingNotes -= nbNotesInPage;
+        nbPages++;
+    }
+    return nbPages;
+}
+
 static void layoutTouchCallback(int token, uint8_t index)
 {
     if (token == BACK_BUTTON_TOKEN) {
+        context.selectedNoteIndex = 0;
         ui_menu_main();
     }
     else if (token == NAV_TOKEN) {
@@ -126,13 +151,14 @@ static void layoutTouchCallback(int token, uint8_t index)
         displayNoteList();
     }
     else if (token == ADD_NOTE_TOKEN) {
+        context.selectedNoteIndex = context.nbUsedNotes;
         app_notesNew(app_notesList, &currentNote);
     }
     else if (token >= BAR_TOUCHED_TOKEN) {
-        index             = context.firstNoteIndexInPage + token - BAR_TOUCHED_TOKEN;
-        currentNote.index = context.noteArray[index].index;
-        strcpy(currentNote.title, context.noteArray[index].title);
-        strcpy(currentNote.content, context.noteArray[index].content);
+        context.selectedNoteIndex = context.firstNoteIndexInPage + token - BAR_TOUCHED_TOKEN;
+        currentNote.index         = context.noteArray[context.selectedNoteIndex].index;
+        strcpy(currentNote.title, context.noteArray[context.selectedNoteIndex].title);
+        strcpy(currentNote.content, context.noteArray[context.selectedNoteIndex].content);
         app_notesDisplay(app_notesList, &currentNote);
     }
 }
@@ -154,8 +180,7 @@ static void displayNoteList(void)
 #else   // TARGET_STAX
                                       .backTextAndAction.actionIcon = &C_Plus_40px,
 #endif  // TARGET_STAX
-                                      .backTextAndAction.textToken   = 0xFF,
-                                      .backTextAndAction.actionToken = ADD_NOTE_TOKEN};
+                                      .backTextAndAction.textToken = 0xFF};
     nbgl_layoutBar_t barLayout = {
         .centered  = false,
         .iconLeft  = NULL,
@@ -167,6 +192,14 @@ static void displayNoteList(void)
     };
 
     layoutContext = nbgl_layoutGet(&layoutDescription);
+    if (context.nbUsedNotes < NB_MAX_NOTES) {
+        headerDesc.backTextAndAction.actionToken = ADD_NOTE_TOKEN;
+    }
+    else {
+        // if max number of notes is reached, deactivate it (grayed-out)
+        // invalid = 0xFF
+        headerDesc.backTextAndAction.actionToken = 0xFF;
+    }
     nbgl_layoutAddHeader(layoutContext, &headerDesc);
 
     if (context.nbPages > 1) {
@@ -179,7 +212,7 @@ static void displayNoteList(void)
                                               .withSeparationLine = true};
         nbgl_layoutAddNavigationBar(layoutContext, &navInfo);
     }
-    // if content is not empty, display it as paragraphs
+    // if content is not empty, display it as a list of touchable bars
     if (context.nbUsedNotes) {
         uint16_t maxHeight = CONTENT_AREA_HEIGHT;
         if (context.nbPages > 1) {
@@ -211,9 +244,15 @@ static void displayNoteList(void)
 void app_notesList(void)
 {
     context.nbUsedNotes = app_notesGetAll(context.noteArray);
-    context.currentPage = 0;
     // compute number of pages
     context.nbPages = getNbPagesTotal(context.nbUsedNotes);
-
+    if (context.nbUsedNotes) {
+        uint16_t maxHeight = CONTENT_AREA_HEIGHT;
+        if (context.nbPages > 1) {
+            maxHeight -= SIMPLE_FOOTER_HEIGHT;
+        }
+        context.currentPage
+            = getPageForNoteIndex(context.nbUsedNotes, context.selectedNoteIndex, maxHeight);
+    }
     displayNoteList();
 }

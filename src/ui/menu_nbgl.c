@@ -47,7 +47,7 @@ static void onPasscodeSuccess(void)
 
 static void onActionButton(void)
 {
-    if (app_notesSettingsIsLocked()) {
+    if (app_notesSettingsIsLocked() && !app_notesIsSessionUnlocked()) {
         app_notesValidatePasscode("Enter your Notes passcode", onPasscodeSuccess, ui_menu_main);
     }
     else {
@@ -67,19 +67,35 @@ void ui_menu_main(void) {
 // true if the settings page also contains user configurable parameters related to the
 // operation of the application.
 #define SETTINGS_BUTTON_ENABLED (true)
+    uint8_t nbUsedNotes;
+    const nbgl_icon_details_t *icon = NULL;
 
     app_notesInit();
-    uint8_t nbUsedNotes = app_notesGetAll(NULL);
+
+    nbUsedNotes = app_notesGetAll(NULL);
+    if (app_notesSettingsIsLocked()) {
+
+        if (app_notesIsSessionUnlocked()) {
+#ifdef TARGET_STAX
+            icon = &C_Check_32px;
+#else   // TARGET_STAX
+            icon = &C_Check_40px;
+#endif  // TARGET_STAX
+        }
+        else {
+#ifdef TARGET_STAX
+            icon = &C_Lock_32px;
+#else   // TARGET_STAX
+            icon = &C_Lock_40px;
+#endif  // TARGET_STAX
+        }
+    }
     nbgl_useCaseHomeExt2("Notes",
                          &C_app_securenotes_64px,
                          "Create private notes, and share them in-person with trusted people.",
                          true,
                          (nbUsedNotes == 0) ? "Create my first Note" : "Go to my Notes",
-#ifdef TARGET_STAX
-                         app_notesSettingsIsLocked() ? &C_Lock_32px : NULL,
-#else   // TARGET_STAX
-                         app_notesSettingsIsLocked() ? &C_Lock_40px : NULL,
-#endif  // TARGET_STAX
+                         icon,
                          onActionButton,
                      app_notesSettings,
                      app_quit);

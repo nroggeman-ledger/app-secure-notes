@@ -59,16 +59,20 @@ void app_notesEditText(nbgl_callback_t onBack,
                        const char     *confirmText,
                        char           *text);
 void app_notesDisplay(nbgl_callback_t onBack, Note_t *note);
+void app_notesActionOnNote(nbgl_callback_t onBack, Note_t *note);
 
 void    app_notesInit(void);
 uint8_t app_notesGetAll(Note_t noteArray[NB_MAX_NOTES]);
 int     app_notesGetNote(uint8_t index, Note_t note);
 int     app_notesAddNote(const char *title, const char *content);
 int     app_notesModifyNote(uint8_t index, const char *title, const char *content);
+int     app_notesDeleteNote(uint8_t index);
 
 bool app_notesSettingsIsLocked(void);
 bool app_notesSettingsCheckPasscode(uint8_t *digits, uint8_t nbDigits);
 void app_notesSettingsSetLockAndPasscode(bool lock, uint8_t *digits, uint8_t nbDigits);
+bool app_notesIsSessionUnlocked(void);
+void app_notesSessionLock(void);
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -21,6 +21,7 @@ enum {
     TAP_ACTION_TOKEN,
     NAV_TOKEN,
     TITLE_TOUCHED_TOKEN,
+    ACTION_TOKEN,
     TEXT_TOUCHED_TOKEN,
 };
 
@@ -39,6 +40,7 @@ typedef struct {
     uint8_t         modifiedParagraphIndex;
     uint8_t         currentPage;
     uint8_t         nbPages;
+    bool            smallFont;
 } DisplayContext_t;
 
 /**********************
@@ -61,6 +63,7 @@ static uint8_t getNbParagraphsInPage(uint8_t      nbParagraphs,
                                      const char **paragraphs,
                                      uint8_t      startIndex,
                                      uint16_t     maxHeight,
+                                     bool         smallFont,
                                      bool        *tooLongToFit)
 {
     uint8_t  nbParagraphsInPage = 0;
@@ -78,8 +81,8 @@ static uint8_t getNbParagraphsInPage(uint8_t      nbParagraphs,
         paragraph = paragraphs[startIndex + nbParagraphsInPage];
 
         // value height
-        currentHeight
-            += nbgl_getTextHeightInWidth(LARGE_MEDIUM_FONT, paragraph, AVAILABLE_WIDTH, true);
+        currentHeight += nbgl_getTextHeightInWidth(
+            smallFont ? SMALL_REGULAR_FONT : LARGE_MEDIUM_FONT, paragraph, AVAILABLE_WIDTH, true);
         if (currentHeight >= maxHeight) {
             break;
         }
@@ -92,7 +95,9 @@ static uint8_t getNbParagraphsInPage(uint8_t      nbParagraphs,
     return nbParagraphsInPage;
 }
 
-static uint8_t getNbPagesForArray(uint8_t nbTotalParagraphs, const char **paragraphs)
+static uint8_t getNbPagesForArray(uint8_t      nbTotalParagraphs,
+                                  const char **paragraphs,
+                                  bool         smallFont)
 {
     uint8_t nbPages               = 0;
     uint8_t nbRemainingParagraphs = nbTotalParagraphs;
@@ -103,12 +108,16 @@ static uint8_t getNbPagesForArray(uint8_t nbTotalParagraphs, const char **paragr
     while (i < nbTotalParagraphs) {
         // upper margin
         nbParagraphsInPage = getNbParagraphsInPage(
-            nbRemainingParagraphs, paragraphs, i, CONTENT_AREA_HEIGHT, &tooLongToFit);
+            nbRemainingParagraphs, paragraphs, i, CONTENT_AREA_HEIGHT, smallFont, &tooLongToFit);
         // if it is supposed to be the last page (of more than 1 page), let's try again with "Tep to
         // enter" in addition of nav bar
         if ((nbPages > 0) && (nbRemainingParagraphs == nbParagraphsInPage)) {
-            nbParagraphsInPage = getNbParagraphsInPage(
-                nbRemainingParagraphs, paragraphs, i, CONTENT_AREA_HEIGHT - 40, &tooLongToFit);
+            nbParagraphsInPage = getNbParagraphsInPage(nbRemainingParagraphs,
+                                                       paragraphs,
+                                                       i,
+                                                       CONTENT_AREA_HEIGHT - SIMPLE_FOOTER_HEIGHT,
+                                                       smallFont,
+                                                       &tooLongToFit);
         }
         i += nbParagraphsInPage;
         nbRemainingParagraphs -= nbParagraphsInPage;
@@ -121,7 +130,7 @@ static uint8_t getNbPagesForArray(uint8_t nbTotalParagraphs, const char **paragr
 static uint8_t getParagraphsForPage(uint8_t      nbTotalParagraphs,
                                     const char **paragraphs,
                                     uint8_t      page,
-                                    uint16_t     maxHeight,
+                                    bool         smallFont,
                                     uint8_t     *firstParagraphIndexInPage)
 {
     uint8_t nbPages               = 0;
@@ -131,14 +140,50 @@ static uint8_t getParagraphsForPage(uint8_t      nbTotalParagraphs,
     bool    tooLongToFit;
 
     while (i < nbTotalParagraphs) {
-        // upper margin
-        nbParagraphsInPage
-            = getNbParagraphsInPage(nbRemainingParagraphs, paragraphs, i, maxHeight, &tooLongToFit);
+        nbParagraphsInPage = getNbParagraphsInPage(
+            nbRemainingParagraphs, paragraphs, i, CONTENT_AREA_HEIGHT, smallFont, &tooLongToFit);
+        // if it is supposed to be the last page (of more than 1 page), let's try again with "Tep to
+        // enter" in addition of nav bar
+        if ((nbPages > 0) && (nbRemainingParagraphs == nbParagraphsInPage)) {
+            nbParagraphsInPage = getNbParagraphsInPage(nbRemainingParagraphs,
+                                                       paragraphs,
+                                                       i,
+                                                       CONTENT_AREA_HEIGHT - SIMPLE_FOOTER_HEIGHT,
+                                                       smallFont,
+                                                       &tooLongToFit);
+        }
         if (nbPages == page) {
             *firstParagraphIndexInPage = i;
             return nbParagraphsInPage;
         }
         i += nbParagraphsInPage;
+        nbRemainingParagraphs -= nbParagraphsInPage;
+        nbPages++;
+    }
+    return nbPages;
+}
+
+// gets the page containing the given paragraph index
+static uint8_t getPageForParagraphs(uint8_t      nbTotalParagraphs,
+                                    const char **paragraphs,
+                                    uint8_t      paragraphIndex,
+                                    uint16_t     maxHeight,
+                                    bool         smallFont)
+{
+    uint8_t nbPages               = 0;
+    uint8_t nbRemainingParagraphs = nbTotalParagraphs;
+    uint8_t nbParagraphsInPage;
+    uint8_t i = 0;
+    bool    tooLongToFit;
+
+    while (i < nbTotalParagraphs) {
+        // upper margin
+        nbParagraphsInPage = getNbParagraphsInPage(
+            nbRemainingParagraphs, paragraphs, i, maxHeight, smallFont, &tooLongToFit);
+        i += nbParagraphsInPage;
+        if (i >= paragraphIndex) {
+            return nbPages;
+        }
         nbRemainingParagraphs -= nbParagraphsInPage;
         nbPages++;
     }
@@ -210,7 +255,9 @@ static void onParagraphModified(void)
     if (newLen == 0) {
         // remove paragraph by shifting all paragraphs after it
         for (i = context.modifiedParagraphIndex; i < (context.nbParagraphs - 1); i++) {
-            context.paragraphs[i] = context.paragraphs[i + 1];
+            memmove(context.paragraphs[i],
+                    context.paragraphs[i + 1],
+                    strlen(context.paragraphs[i + 1]) + 1);
         }
         context.paragraphs[context.nbParagraphs - 1] = NULL;
         context.nbParagraphs--;
@@ -260,6 +307,7 @@ static void backFromDisplay(void)
 static void layoutTouchCallback(int token, uint8_t index)
 {
     if (token == BACK_BUTTON_TOKEN) {
+        context.modifiedParagraphIndex = 0;
         context.onBack();
     }
     else if (token == NAV_TOKEN) {
@@ -267,18 +315,24 @@ static void layoutTouchCallback(int token, uint8_t index)
         displayNoteContent(context.note);
     }
     else if (token == TAP_ACTION_TOKEN) {
-        strcpy(tmpString, "");
-        app_notesEditText(
-            backFromDisplay, onNewParagraphConfirmed, "New paragraph", "Confirm", tmpString);
+        if (context.nbParagraphs < NB_MAX_PARAGRAPHS) {
+            strcpy(tmpString, "");
+            context.modifiedParagraphIndex = context.nbParagraphs;
+            app_notesEditText(
+                backFromDisplay, onNewParagraphConfirmed, "New paragraph", "Confirm", tmpString);
+        }
     }
     else if (token == TITLE_TOUCHED_TOKEN) {
         strcpy(tmpString, context.note->title);
         app_notesEditText(backFromDisplay, onTitleModified, "Change title", "Confirm", tmpString);
     }
+    else if (token == ACTION_TOKEN) {
+        // launch a new page to act on this note
+        app_notesActionOnNote(backFromDisplay, context.note);
+    }
     else {
         context.modifiedParagraphIndex
             = context.firstParagraphIndexInPage + (token - TEXT_TOUCHED_TOKEN);
-        // printf("layoutTouchCallback, edit paragraph %d\n", context.modifiedParagraphIndex);
         strcpy(tmpString, context.paragraphs[context.modifiedParagraphIndex]);
         app_notesEditText(
             backFromDisplay, onParagraphModified, "New paragraph", "Confirm", tmpString);
@@ -291,21 +345,30 @@ static void displayNoteContent(Note_t *note)
                                                   .withLeftBorder        = true,
                                                   .onActionCallback      = &layoutTouchCallback,
                                                   .ticker.tickerCallback = NULL,
-                                                  .tapActionText         = "Tap anywhere to edit",
                                                   .tapActionToken        = TAP_ACTION_TOKEN};
     nbgl_layoutHeader_t      headerDesc        = {.type           = HEADER_BACK_TEXT_AND_ACTION,
                                                   .separationLine = true,
-                                                  .backTextAndAction.backToken  = BACK_BUTTON_TOKEN,
-                                                  .backTextAndAction.tuneId     = TUNE_TAP_CASUAL,
-                                                  .backTextAndAction.text       = (char *) note->title,
-                                                  .backTextAndAction.actionIcon = NULL,
-                                                  .backTextAndAction.textToken  = TITLE_TOUCHED_TOKEN};
+                                                  .backTextAndAction.backToken = BACK_BUTTON_TOKEN,
+                                                  .backTextAndAction.tuneId    = TUNE_TAP_CASUAL,
+                                                  .backTextAndAction.text      = (char *) note->title,
+#ifdef TARGET_STAX
+                                      .backTextAndAction.actionIcon = &C_Dots_32px,
+#else   // TARGET_STAX
+                                      .backTextAndAction.actionIcon = &C_Dots_40px,
+#endif  // TARGET_STAX
+                                      .backTextAndAction.actionToken = ACTION_TOKEN,
+                                      .backTextAndAction.textToken   = TITLE_TOUCHED_TOKEN};
     // do not enable to add new paragraph if not at the last page (or single page)
     if ((context.nbPages > 1) && (context.currentPage < (context.nbPages - 1))) {
         layoutDescription.tapActionText = NULL;
     }
     else {
-        layoutDescription.tapActionText = "Tap anywhere to edit";
+        if (context.nbParagraphs < NB_MAX_PARAGRAPHS) {
+            layoutDescription.tapActionText = "Tap anywhere to edit";
+        }
+        else {
+            layoutDescription.tapActionText = "No more space";
+        }
     }
 
     layoutContext = nbgl_layoutGet(&layoutDescription);
@@ -323,21 +386,18 @@ static void displayNoteContent(Note_t *note)
     }
     // if content is not empty, display it as paragraphs
     if (context.nbParagraphs) {
-        uint16_t maxHeight = CONTENT_AREA_HEIGHT;
-        if ((context.nbPages > 1) && (context.currentPage == (context.nbPages - 1))) {
-            maxHeight -= 40;
-        }
-        uint8_t nbParagraphInPage = getParagraphsForPage(context.nbParagraphs,
+        uint8_t nbParagraphInPage      = getParagraphsForPage(context.nbParagraphs,
                                                          (const char **) context.paragraphs,
                                                          context.currentPage,
-                                                         maxHeight,
+                                                         context.smallFont,
                                                          &context.firstParagraphIndexInPage);
+        context.modifiedParagraphIndex = context.firstParagraphIndexInPage;
         for (uint8_t i = 0; i < nbParagraphInPage; i++) {
             nbgl_layoutAddTouchableText(layoutContext,
                                         context.paragraphs[context.firstParagraphIndexInPage + i],
                                         TEXT_TOUCHED_TOKEN + i,
                                         10,
-                                        false,
+                                        context.smallFont,
                                         NBGL_NO_TUNE);
         }
     }
@@ -361,12 +421,21 @@ void app_notesDisplay(nbgl_callback_t onBack, Note_t *note)
     context.onBack = onBack;
     context.note   = note;
 
+    context.smallFont = (strlen(context.note->content) > 50);
+
     content2paragraphs(note);
     if (context.nbParagraphs) {
-        context.nbPages
-            = getNbPagesForArray(context.nbParagraphs, (const char **) context.paragraphs);
+        context.nbPages = getNbPagesForArray(
+            context.nbParagraphs, (const char **) context.paragraphs, context.smallFont);
+        context.modifiedParagraphIndex
+            = MIN(context.modifiedParagraphIndex, (context.nbParagraphs - 1));
+        // go to proper page
+        context.currentPage = getPageForParagraphs(context.nbParagraphs,
+                                                   (const char **) context.paragraphs,
+                                                   context.modifiedParagraphIndex,
+                                                   CONTENT_AREA_HEIGHT,
+                                                   context.smallFont);
     }
-    context.currentPage = 0;
 
     displayNoteContent(note);
 }

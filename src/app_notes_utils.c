@@ -28,6 +28,7 @@
  **********************/
 static char workingTitle[NOTE_TITLE_MAX_LEN];
 static char workingContent[NOTE_CONTENT_MAX_LEN];
+static bool isUnlocked = false;
 
 /**********************
  *      VARIABLES
@@ -122,8 +123,9 @@ int app_notesAddNote(const char *title, const char *content)
 }
 
 /**
- * @brief Modify the note at the given slot
+ * @brief Modify the note at the given index
  *
+ * @param index index of the note to modify
  * @param title title to be applied (max @ref NOTE_TITLE_MAX_LEN bytes)
  * @param content content to be applied (max @ref NOTE_CONTENT_MAX_LEN bytes
  * @return >= 0 if OK
@@ -132,6 +134,18 @@ int app_notesModifyNote(uint8_t index, const char *title, const char *content)
 {
     nvm_write((void *) &N_nvram.data.notes[index].title, (void *) title, strlen(title) + 1);
     nvm_write((void *) &N_nvram.data.notes[index].content, (void *) content, strlen(content) + 1);
+    return 0;
+}
+
+/**
+ * @brief Delete the note at the given slot
+ *
+ * @param index index of the note to delete
+ * @return >= 0 if OK
+ */
+int app_notesDeleteNote(uint8_t index)
+{
+    nvm_erase((void *) &N_nvram.data.notes[index], sizeof(NvramNote_t));
     return 0;
 }
 
@@ -152,8 +166,9 @@ bool app_notesSettingsIsLocked(void)
  */
 bool app_notesSettingsCheckPasscode(uint8_t *digits, uint8_t nbDigits)
 {
-    return ((N_nvram.data.settings.nbDigits == nbDigits)
-            && (!memcmp(N_nvram.data.settings.digits, digits, nbDigits)));
+    isUnlocked = ((N_nvram.data.settings.nbDigits == nbDigits)
+                  && (!memcmp((void *) N_nvram.data.settings.digits, digits, nbDigits)));
+    return isUnlocked;
 }
 
 /**
@@ -166,5 +181,16 @@ void app_notesSettingsSetLockAndPasscode(bool lock, uint8_t *digits, uint8_t nbD
     if (lock) {
         nvm_write((void *) &N_nvram.data.settings.nbDigits, (void *) &nbDigits, 1);
         nvm_write((void *) &N_nvram.data.settings.digits, (void *) digits, nbDigits);
+        isUnlocked = true;
     }
+}
+
+bool app_notesIsSessionUnlocked(void)
+{
+    return isUnlocked;
+}
+
+void app_notesSessionLock(void)
+{
+    isUnlocked = false;
 }
