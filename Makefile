@@ -1,6 +1,6 @@
 # ****************************************************************************
-#    Ledger App Boilerplate
-#    (c) 2023 Ledger SAS.
+#    Ledger App Secure-Notes
+#    (c) 2024 Ledger SAS.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -25,11 +25,11 @@ include $(BOLOS_SDK)/Makefile.defines
 #        Mandatory configuration       #
 ########################################
 # Application name
-APPNAME = "Boilerplate"
+APPNAME = "Secure Notes"
 
 # Application version
-APPVERSION_M = 2
-APPVERSION_N = 1
+APPVERSION_M = 1
+APPVERSION_N = 0
 APPVERSION_P = 0
 APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
@@ -41,7 +41,7 @@ APP_SOURCE_PATH += src
 ICON_NANOS = icons/app_boilerplate_16px.gif
 ICON_NANOX = icons/app_boilerplate_14px.gif
 ICON_NANOSP = icons/app_boilerplate_14px.gif
-ICON_STAX = icons/app_boilerplate_32px.gif
+ICON_STAX = icons/app_securenotes_32px.png
 
 # Application allowed derivation curves.
 # Possibles curves are: secp256k1, secp256r1, ed25519 and bls12381g1
@@ -89,15 +89,15 @@ ENABLE_BLUETOOTH = 1
 #         NBGL custom features         #
 ########################################
 ENABLE_NBGL_QRCODE = 1
-#ENABLE_NBGL_KEYBOARD = 1
-#ENABLE_NBGL_KEYPAD = 1
+ENABLE_NBGL_KEYBOARD = 1
+ENABLE_NBGL_KEYPAD = 1
 
 ########################################
 #          Features disablers          #
 ########################################
 # These advanced settings allow to disable some feature that are by
 # default enabled in the SDK `Makefile.standard_app`.
-#DISABLE_STANDARD_APP_FILES = 1 
+#DISABLE_STANDARD_APP_FILES = 1
 #DISABLE_DEFAULT_IO_SEPROXY_BUFFER_SIZE = 1 # To allow custom size declaration
 #DISABLE_STANDARD_APP_DEFINES = 1 # Will set all the following disablers
 #DISABLE_STANDARD_SNPRINTF = 1

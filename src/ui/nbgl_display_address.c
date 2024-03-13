@@ -77,7 +77,7 @@ int ui_display_address() {
         return io_send_sw(SW_DISPLAY_ADDRESS_FAIL);
     }
 
-    nbgl_useCaseReviewStart(&C_app_boilerplate_64px,
+    nbgl_useCaseReviewStart(&C_app_securenotes_64px,
                             "Verify BOL address",
                             NULL,
                             "Cancel",

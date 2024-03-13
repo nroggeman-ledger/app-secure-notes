@@ -85,7 +85,7 @@ static void review_continue(void) {
     pairList.pairs = pairs;
 
     // Info long press
-    infoLongPress.icon = &C_app_boilerplate_64px;
+    infoLongPress.icon = &C_app_securenotes_64px;
     infoLongPress.text = "Sign transaction\nto send BOL";
     infoLongPress.longPressText = "Hold to sign";
 
@@ -120,7 +120,7 @@ int ui_display_transaction() {
     }
 
     // Start review
-    nbgl_useCaseReviewStart(&C_app_boilerplate_64px,
+    nbgl_useCaseReviewStart(&C_app_securenotes_64px,
                             "Review transaction\nto send BOL",
                             NULL,
                             "Reject transaction",
