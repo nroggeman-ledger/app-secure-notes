@@ -1,7 +1,7 @@
 
 /**
- * @file app_notes_list.c
- * @brief Page to display the list of notes
+ * @file app_notes_share.c
+ * @brief Page to display the list of contacts and share a note
  *
  */
 
@@ -19,7 +19,8 @@
 enum {
     BACK_BUTTON_TOKEN = 0,
     NAV_TOKEN,
-    ADD_NOTE_TOKEN,
+    ADD_CONTACT_TOKEN,
+    CANCEL_TOKEN,
     BAR_TOUCHED_TOKEN,
 };
 
@@ -30,18 +31,21 @@ enum {
  *      TYPEDEFS
  **********************/
 typedef struct {
-    uint8_t nbUsedNotes;
-    Note_t  noteArray[NB_MAX_NOTES];
-    uint8_t currentPage;
-    uint8_t nbPages;
-    uint8_t firstNoteIndexInPage;
-    uint8_t selectedNoteIndex;
-} ListContext_t;
+    uint8_t         nbUsedContacts;
+    Contact_t       contacts[NB_MAX_CONTACTS];
+    Note_t         *note;
+    uint8_t         currentPage;
+    uint8_t         nbPages;
+    uint8_t         firstContactIndexInPage;
+    uint8_t         selectedContactIndex;
+    Note_t          receivedNote;
+    nbgl_callback_t onBack;
+} ShareContext_t;
 
 /**********************
  *  STATIC VARIABLES
  **********************/
-static ListContext_t  context;
+static ShareContext_t context;
 static nbgl_layout_t *layoutContext;
 
 /**********************
@@ -51,7 +55,8 @@ static nbgl_layout_t *layoutContext;
 /**********************
  *  STATIC PROTOTYPES
  **********************/
-static void displayNoteList(void);
+static void layoutTouchCallback(int token, uint8_t index);
+static void buildScreen(void);
 
 static uint8_t getNbNotesInPage(uint8_t nbNotes, uint16_t maxHeight)
 {
@@ -93,10 +98,10 @@ static uint8_t getNbPagesTotal(uint8_t nbTotalNotes)
 }
 
 // gets the number of notes and the index of the first note fitting in the given page
-static uint8_t getNotesForPage(uint8_t  nbTotalNotes,
-                               uint8_t  page,
-                               uint16_t maxHeight,
-                               uint8_t *firstParagraphIndexInPage)
+static uint8_t getContactsForPage(uint8_t  nbTotalNotes,
+                                  uint8_t  page,
+                                  uint16_t maxHeight,
+                                  uint8_t *firstParagraphIndexInPage)
 {
     uint8_t nbPages          = 0;
     uint8_t nbRemainingNotes = nbTotalNotes;
@@ -119,7 +124,7 @@ static uint8_t getNotesForPage(uint8_t  nbTotalNotes,
 }
 
 // gets the number of notes and the index of the first note fitting in the given page
-static uint8_t getPageForNoteIndex(uint8_t nbTotalNotes, uint8_t noteIndex, uint16_t maxHeight)
+static uint8_t getPageForContactIndex(uint8_t nbTotalNotes, uint8_t noteIndex, uint16_t maxHeight)
 {
     uint8_t nbPages          = 0;
     uint8_t nbRemainingNotes = nbTotalNotes;
@@ -140,30 +145,91 @@ static uint8_t getPageForNoteIndex(uint8_t nbTotalNotes, uint8_t noteIndex, uint
     return nbPages;
 }
 
+static void onBackOnShare(void)
+{
+    app_notesShare(context.onBack, context.note);
+}
+
+static void onNoteReceptionChoice(bool confirm)
+{
+    if (confirm) {
+        int status;
+        // save note without content
+        status = app_notesAddNote(context.receivedNote.title, context.receivedNote.content);
+        if (status >= 0) {
+            ui_menu_main();
+        }
+        else {
+            // impossible to add, probably full
+            // answer APDU here
+            nbgl_useCaseStatus("Impossible to add Note", false, ui_menu_main);
+        }
+    }
+    else {
+        ui_menu_main();
+    }
+}
+
+static void displayWaitingScreen(void)
+{
+    // display a screen to invite user to use phone of computer to add address
+    nbgl_layoutDescription_t layoutDescription
+        = {.modal = false, .withLeftBorder = false, .onActionCallback = &layoutTouchCallback};
+    nbgl_layoutCenteredInfo_t centeredInfo
+        = {.text1   = "Continue on your phone or computer",
+           .text2   = tmpString,
+           .text3   = NULL,
+           .style   = LARGE_CASE_INFO,
+           .icon    = &C_Phone_64px,
+           .offsetY = 0};
+    nbgl_layoutFooter_t footerDesc = {.type              = FOOTER_SIMPLE_TEXT,
+                                      .simpleText.text   = "Cancel",
+                                      .simpleText.token  = CANCEL_TOKEN,
+                                      .simpleText.tuneId = TUNE_TAP_CASUAL};
+
+    layoutContext = nbgl_layoutGet(&layoutDescription);
+#ifndef TARGET_STAX
+    nbgl_layoutHeader_t headerDesc
+        = {.type = HEADER_EMPTY, .separationLine = false, .emptySpace.height = 40};
+    nbgl_layoutAddHeader(layoutContext, &headerDesc);
+#endif  // TARGET_STAX
+    snprintf(tmpString,
+             sizeof(tmpString),
+             "Use Ledger Live to share this Note with %s.",
+             currentContact.name);
+    nbgl_layoutAddCenteredInfo(layoutContext, &centeredInfo);
+    nbgl_layoutAddExtendedFooter(layoutContext, &footerDesc);
+
+    nbgl_layoutDraw(layoutContext);
+}
+
 static void layoutTouchCallback(int token, uint8_t index)
 {
     if (token == BACK_BUTTON_TOKEN) {
-        context.selectedNoteIndex = 0;
+        context.selectedContactIndex = 0;
         ui_menu_main();
     }
     else if (token == NAV_TOKEN) {
         context.currentPage = index;
-        displayNoteList();
+        buildScreen();
     }
-    else if (token == ADD_NOTE_TOKEN) {
-        context.selectedNoteIndex = context.nbUsedNotes;
-        app_notesNew(app_notesList, &currentNote);
+    else if (token == ADD_CONTACT_TOKEN) {
+        context.selectedContactIndex = context.nbUsedContacts;
+        app_notesNewContact(onBackOnShare, &currentContact);
+    }
+    else if (token == CANCEL_TOKEN) {
+        onBackOnShare();
     }
     else if (token >= BAR_TOUCHED_TOKEN) {
-        context.selectedNoteIndex = context.firstNoteIndexInPage + token - BAR_TOUCHED_TOKEN;
-        currentNote.index         = context.noteArray[context.selectedNoteIndex].index;
-        strcpy(currentNote.title, context.noteArray[context.selectedNoteIndex].title);
-        strcpy(currentNote.content, context.noteArray[context.selectedNoteIndex].content);
-        app_notesDisplay(app_notesList, &currentNote);
+        context.selectedContactIndex = context.firstContactIndexInPage + token - BAR_TOUCHED_TOKEN;
+        currentContact.index         = context.contacts[context.selectedContactIndex].index;
+        strcpy(currentContact.name, context.contacts[context.selectedContactIndex].name);
+        strcpy(currentContact.address, context.contacts[context.selectedContactIndex].address);
+        displayWaitingScreen();
     }
 }
 
-static void displayNoteList(void)
+static void buildScreen(void)
 {
     nbgl_layoutDescription_t layoutDescription = {.modal                 = false,
                                                   .withLeftBorder        = true,
@@ -174,7 +240,7 @@ static void displayNoteList(void)
                                                   .separationLine = true,
                                                   .backTextAndAction.backToken = BACK_BUTTON_TOKEN,
                                                   .backTextAndAction.tuneId    = TUNE_TAP_CASUAL,
-                                                  .backTextAndAction.text      = (char *) "My Notes",
+                                                  .backTextAndAction.text = (char *) "Choose receiver",
 #ifdef TARGET_STAX
                                       .backTextAndAction.actionIcon = &C_Plus_32px,
 #else   // TARGET_STAX
@@ -188,12 +254,12 @@ static void displayNoteList(void)
         .inactive  = false,
         .large     = false,
         .subText   = false,
-        .tuneId    = TUNE_TAP_CASUAL,
+        .tuneId    = NBGL_NO_TUNE,
     };
 
     layoutContext = nbgl_layoutGet(&layoutDescription);
-    if (context.nbUsedNotes < NB_MAX_NOTES) {
-        headerDesc.backTextAndAction.actionToken = ADD_NOTE_TOKEN;
+    if (context.nbUsedContacts < NB_MAX_CONTACTS) {
+        headerDesc.backTextAndAction.actionToken = ADD_CONTACT_TOKEN;
     }
     else {
         // if max number of notes is reached, deactivate it (grayed-out)
@@ -206,22 +272,24 @@ static void displayNoteList(void)
         nbgl_layoutNavigationBar_t navInfo = {.activePage         = context.currentPage,
                                               .nbPages            = context.nbPages,
                                               .token              = NAV_TOKEN,
-                                              .tuneId             = TUNE_TAP_CASUAL,
+                                              .tuneId             = NBGL_NO_TUNE,
                                               .withBackKey        = true,
                                               .withExitKey        = false,
                                               .withSeparationLine = true};
         nbgl_layoutAddNavigationBar(layoutContext, &navInfo);
     }
     // if content is not empty, display it as a list of touchable bars
-    if (context.nbUsedNotes) {
+    if (context.nbUsedContacts) {
         uint16_t maxHeight = CONTENT_AREA_HEIGHT;
         if (context.nbPages > 1) {
             maxHeight -= SIMPLE_FOOTER_HEIGHT;
         }
-        uint8_t nbNotesInPage = getNotesForPage(
-            context.nbUsedNotes, context.currentPage, maxHeight, &context.firstNoteIndexInPage);
+        uint8_t nbNotesInPage = getContactsForPage(context.nbUsedContacts,
+                                                   context.currentPage,
+                                                   maxHeight,
+                                                   &context.firstContactIndexInPage);
         for (uint8_t i = 0; i < nbNotesInPage; i++) {
-            barLayout.text  = context.noteArray[context.firstNoteIndexInPage + i].title;
+            barLayout.text  = context.contacts[context.firstContactIndexInPage + i].name;
             barLayout.token = BAR_TOUCHED_TOKEN + i;
             nbgl_layoutAddTouchableBar(layoutContext, &barLayout);
             nbgl_layoutAddSeparationLine(layoutContext);
@@ -238,21 +306,65 @@ static void displayNoteList(void)
  **********************/
 
 /**
- * @brief Page to display the list of notes
+ * @brief Page to list the contacts to share a note
  *
  */
-void app_notesList(void)
+void app_notesShare(nbgl_callback_t onBack, Note_t *note)
 {
-    context.nbUsedNotes = app_notesGetAll(context.noteArray);
+    context.onBack         = onBack;
+    context.note           = note;
+    context.nbUsedContacts = app_notesGetContacts(context.contacts);
     // compute number of pages
-    context.nbPages = getNbPagesTotal(context.nbUsedNotes);
-    if (context.nbUsedNotes) {
+    context.nbPages = getNbPagesTotal(context.nbUsedContacts);
+    if (context.nbUsedContacts) {
         uint16_t maxHeight = CONTENT_AREA_HEIGHT;
         if (context.nbPages > 1) {
             maxHeight -= SIMPLE_FOOTER_HEIGHT;
         }
-        context.currentPage
-            = getPageForNoteIndex(context.nbUsedNotes, context.selectedNoteIndex, maxHeight);
+        context.currentPage = getPageForContactIndex(
+            context.nbUsedContacts, context.selectedContactIndex, maxHeight);
     }
-    displayNoteList();
+    buildScreen();
+}
+
+/**
+ * @brief Function when receiving APDU for sharing emission
+ *
+ */
+Note_t *app_notesGetSharedNote(void)
+{
+    if (context.note == NULL) {
+        return NULL;
+    }
+    snprintf(tmpString,
+             sizeof(tmpString),
+             "Note sent\nNext, %s has to accept it.",
+             currentContact.name);
+    // display status
+    nbgl_useCaseStatus(tmpString, true, app_notesList);
+    return context.note;
+}
+
+/**
+ * @brief Function when receiving APDU for sharing in reception
+ *
+ */
+int app_notesReceiveSharedNote(const char *title, const char *content)
+{
+    if (title == NULL) {
+        return -1;
+    }
+    if (content == NULL) {
+        return -1;
+    }
+    context.receivedNote.title   = (char *) title;
+    context.receivedNote.content = (char *) content;
+    // display status
+    nbgl_useCaseChoice(&C_Download_64px,
+                       "Add shared Note?",
+                       title,
+                       "Add Note",
+                       "Reject Note",
+                       onNoteReceptionChoice);
+    return 0;
 }

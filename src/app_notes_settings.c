@@ -106,7 +106,7 @@ static void displaySettings(void)
                     .text      = "Lock Notes",
                     .subText = "Set a dedicated passcode as additional security on top of your device PIN.",
                     .token  = SWITCH_TOKEN,
-                    .tuneId = NBGL_NO_TUNE,
+                    .tuneId = TUNE_TAP_CASUAL,
     };
 
     layoutContext = nbgl_layoutGet(&layoutDescription);
@@ -115,7 +115,7 @@ static void displaySettings(void)
     nbgl_layoutNavigationBar_t navInfo = {.activePage         = currentPage,
                                           .nbPages            = NB_PAGES,
                                           .token              = NAV_TOKEN,
-                                          .tuneId             = NBGL_NO_TUNE,
+                                          .tuneId             = TUNE_TAP_CASUAL,
                                           .withBackKey        = true,
                                           .withExitKey        = false,
                                           .withSeparationLine = true};

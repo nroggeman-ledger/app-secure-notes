@@ -15,10 +15,14 @@ typedef struct {
 } NvramSettings_t;
 
 typedef struct {
-    bool       used;
     const char title[NOTE_TITLE_MAX_LEN];
     const char content[NOTE_CONTENT_MAX_LEN];
 } NvramNote_t;
+
+typedef struct {
+    const char name[CONTACT_NAME_LEN];
+    const char address[CONTACT_ADDRESS_MAX_LEN];
+} NvramContact_t;
 
 /**
  * @brief Oldest supported version of the NVRAM (for conversion)
@@ -47,5 +51,11 @@ typedef struct {
  */
 typedef struct Nvram_data_s {
     NvramSettings_t settings;
-    NvramNote_t     notes[NB_MAX_NOTES];
+    uint32_t usedNotes;     // bit mask to indicate whether or not the notes in above array are used
+                            // (up to 32 notes)
+    uint32_t usedContacts;  // bit mask to indicate whether or not the contacts in above array are
+                            // used (up to 32 contacts)
+    NvramNote_t    notes[NB_MAX_NOTES];
+    NvramContact_t contacts[NB_MAX_CONTACTS];
+
 } Nvram_data_t;

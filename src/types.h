@@ -15,7 +15,10 @@ typedef enum {
     GET_VERSION = 0x03,     /// version of the application
     GET_APP_NAME = 0x04,    /// name of the application
     GET_PUBLIC_KEY = 0x05,  /// public key of corresponding BIP32 path
-    SIGN_TX = 0x06          /// sign transaction with BIP32 path
+    SIGN_TX = 0x06,         /// sign transaction with BIP32 path
+    ADD_ADDRESS = 0x07,     /// add public adddress of contact
+    GET_NOTE = 0x08,     /// get encrypted shared note
+    PUT_NOTE = 0x09     /// put encrypted shared note
 } command_e;
 /**
  * Enumeration with parsing state.
@@ -31,7 +34,10 @@ typedef enum {
  */
 typedef enum {
     CONFIRM_ADDRESS,     /// confirm address derived from public key
-    CONFIRM_TRANSACTION  /// confirm transaction information
+    CONFIRM_TRANSACTION,  /// confirm transaction information
+    CONFIRM_ADD_ADDRESS,
+    CONFIRM_GET_NOTE,
+    CONFIRM_PUT_NOTE
 } request_type_e;
 
 /**

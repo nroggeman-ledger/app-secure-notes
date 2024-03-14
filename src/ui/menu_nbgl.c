@@ -90,9 +90,9 @@ void ui_menu_main(void) {
 #endif  // TARGET_STAX
         }
     }
-    nbgl_useCaseHomeExt2("Notes",
+    nbgl_useCaseHomeExt2(APPNAME,
                          &C_app_securenotes_64px,
-                         "Create private notes, and share them in-person with trusted people.",
+                         "Create private notes and share them with trusted people",
                          true,
                          (nbUsedNotes == 0) ? "Create my first Note" : "Go to my Notes",
                          icon,

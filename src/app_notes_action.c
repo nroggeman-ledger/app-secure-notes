@@ -52,6 +52,10 @@ static void onDeleteChoice(bool confirm)
         buildScreen();
     }
 }
+static void onBackFromShare(void)
+{
+    app_notesActionOnNote(onBackCallback, concernedNote);
+}
 
 static void layoutTouchCallback(int token, uint8_t index)
 {
@@ -69,6 +73,7 @@ static void layoutTouchCallback(int token, uint8_t index)
                            onDeleteChoice);
     }
     else if (token >= SHARE_TOKEN) {
+        app_notesShare(onBackFromShare, concernedNote);
     }
 }
 
@@ -91,7 +96,7 @@ static void buildScreen(void)
                         .inactive  = false,
                         .large     = false,
                         .subText   = false,
-                        .tuneId    = NBGL_NO_TUNE,
+                        .tuneId    = TUNE_TAP_CASUAL,
     };
 
     layoutContext = nbgl_layoutGet(&layoutDescription);

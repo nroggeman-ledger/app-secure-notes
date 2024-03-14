@@ -48,11 +48,11 @@ typedef struct {
  **********************/
 static nbgl_layout_t   *layoutContext;
 static DisplayContext_t context;
-static char             tmpString[NOTE_CONTENT_MAX_LEN];
 
 /**********************
  *      VARIABLES
  **********************/
+char             tmpString[NOTE_CONTENT_MAX_LEN];
 
 /**********************
  *  STATIC FUNCTIONS
@@ -367,7 +367,7 @@ static void displayNoteContent(Note_t *note)
             layoutDescription.tapActionText = "Tap anywhere to edit";
         }
         else {
-            layoutDescription.tapActionText = "No more space";
+            layoutDescription.tapActionText = "Paragraphs limit reached";
         }
     }
 
@@ -378,7 +378,7 @@ static void displayNoteContent(Note_t *note)
         nbgl_layoutNavigationBar_t navInfo = {.activePage         = context.currentPage,
                                               .nbPages            = context.nbPages,
                                               .token              = NAV_TOKEN,
-                                              .tuneId             = NBGL_NO_TUNE,
+                                              .tuneId             = TUNE_TAP_CASUAL,
                                               .withBackKey        = true,
                                               .withExitKey        = false,
                                               .withSeparationLine = true};
@@ -398,7 +398,7 @@ static void displayNoteContent(Note_t *note)
                                         TEXT_TOUCHED_TOKEN + i,
                                         10,
                                         context.smallFont,
-                                        NBGL_NO_TUNE);
+                                        TUNE_TAP_CASUAL);
         }
     }
 
@@ -435,6 +435,10 @@ void app_notesDisplay(nbgl_callback_t onBack, Note_t *note)
                                                    context.modifiedParagraphIndex,
                                                    CONTENT_AREA_HEIGHT,
                                                    context.smallFont);
+    }
+    else {
+        context.nbPages     = 1;
+        context.currentPage = 0;
     }
 
     displayNoteContent(note);
