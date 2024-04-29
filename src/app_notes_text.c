@@ -219,15 +219,15 @@ void app_notesEditText(nbgl_callback_t onBack,
                                                   .lettersOnly = false,  // all types of chars are allowed
                                                   .mode        = MODE_LETTERS};
     nbgl_layoutHeader_t      headerDesc        = {
-                    .type                        = HEADER_BACK_TEXT_AND_ACTION,
+                    .type                        = HEADER_EXTENDED_BACK,
                     .separationLine              = true,
-                    .backTextAndAction.backToken = BACK_BUTTON_TOKEN,
-                    .backTextAndAction.tuneId    = TUNE_TAP_CASUAL,
-                    .backTextAndAction.text      = (char *) headerText,
+                    .extendedBack.backToken = BACK_BUTTON_TOKEN,
+                    .extendedBack.tuneId    = TUNE_TAP_CASUAL,
+                    .extendedBack.text      = (char *) headerText,
 #ifdef TARGET_STAX
-        .backTextAndAction.actionIcon = &C_Close_32px,
+        .extendedBack.actionIcon = &C_Close_32px,
 #else   // TARGET_STAX
-        .backTextAndAction.actionIcon = &C_Close_40px
+        .extendedBack.actionIcon = &C_Close_40px
 #endif  // TARGET_STAX
     };
     int status;
@@ -241,10 +241,10 @@ void app_notesEditText(nbgl_callback_t onBack,
 
     layoutContext = nbgl_layoutGet(&layoutDescription);
     if (enteredTextLen > 0) {
-        headerDesc.backTextAndAction.actionToken = ERASE_TEXT_TOKEN;
+        headerDesc.extendedBack.actionToken = ERASE_TEXT_TOKEN;
     }
     else {
-        headerDesc.backTextAndAction.actionToken = 0xFF;
+        headerDesc.extendedBack.actionToken = NBGL_INVALID_TOKEN;
     }
     nbgl_layoutAddHeader(layoutContext, &headerDesc);
 

@@ -346,18 +346,18 @@ static void displayNoteContent(Note_t *note)
                                                   .onActionCallback      = &layoutTouchCallback,
                                                   .ticker.tickerCallback = NULL,
                                                   .tapActionToken        = TAP_ACTION_TOKEN};
-    nbgl_layoutHeader_t      headerDesc        = {.type           = HEADER_BACK_TEXT_AND_ACTION,
+    nbgl_layoutHeader_t      headerDesc        = {.type           = HEADER_EXTENDED_BACK,
                                                   .separationLine = true,
-                                                  .backTextAndAction.backToken = BACK_BUTTON_TOKEN,
-                                                  .backTextAndAction.tuneId    = TUNE_TAP_CASUAL,
-                                                  .backTextAndAction.text      = (char *) note->title,
+                                                  .extendedBack.backToken = BACK_BUTTON_TOKEN,
+                                                  .extendedBack.tuneId    = TUNE_TAP_CASUAL,
+                                                  .extendedBack.text      = (char *) note->title,
 #ifdef TARGET_STAX
-                                      .backTextAndAction.actionIcon = &C_Dots_32px,
+                                      .extendedBack.actionIcon = &C_Dots_32px,
 #else   // TARGET_STAX
-                                      .backTextAndAction.actionIcon = &C_Dots_40px,
+                                      .extendedBack.actionIcon = &C_Dots_40px,
 #endif  // TARGET_STAX
-                                      .backTextAndAction.actionToken = ACTION_TOKEN,
-                                      .backTextAndAction.textToken   = TITLE_TOUCHED_TOKEN};
+                                      .extendedBack.actionToken = ACTION_TOKEN,
+                                      .extendedBack.textToken   = TITLE_TOUCHED_TOKEN};
     // do not enable to add new paragraph if not at the last page (or single page)
     if ((context.nbPages > 1) && (context.currentPage < (context.nbPages - 1))) {
         layoutDescription.tapActionText = NULL;

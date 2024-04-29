@@ -236,17 +236,17 @@ static void buildScreen(void)
                                                   .onActionCallback      = &layoutTouchCallback,
                                                   .ticker.tickerCallback = NULL,
                                                   .tapActionText         = NULL};
-    nbgl_layoutHeader_t      headerDesc        = {.type           = HEADER_BACK_TEXT_AND_ACTION,
+    nbgl_layoutHeader_t      headerDesc        = {.type           = HEADER_EXTENDED_BACK,
                                                   .separationLine = true,
-                                                  .backTextAndAction.backToken = BACK_BUTTON_TOKEN,
-                                                  .backTextAndAction.tuneId    = TUNE_TAP_CASUAL,
-                                                  .backTextAndAction.text = (char *) "Choose receiver",
+                                                  .extendedBack.backToken = BACK_BUTTON_TOKEN,
+                                                  .extendedBack.tuneId    = TUNE_TAP_CASUAL,
+                                                  .extendedBack.text = (char *) "Choose receiver",
 #ifdef TARGET_STAX
-                                      .backTextAndAction.actionIcon = &C_Plus_32px,
+                                      .extendedBack.actionIcon = &C_Plus_32px,
 #else   // TARGET_STAX
-                                      .backTextAndAction.actionIcon = &C_Plus_40px,
+                                      .extendedBack.actionIcon = &C_Plus_40px,
 #endif  // TARGET_STAX
-                                      .backTextAndAction.textToken = 0xFF};
+                                      .extendedBack.textToken = NBGL_INVALID_TOKEN};
     nbgl_layoutBar_t barLayout = {
         .centered  = false,
         .iconLeft  = NULL,
@@ -259,12 +259,11 @@ static void buildScreen(void)
 
     layoutContext = nbgl_layoutGet(&layoutDescription);
     if (context.nbUsedContacts < NB_MAX_CONTACTS) {
-        headerDesc.backTextAndAction.actionToken = ADD_CONTACT_TOKEN;
+        headerDesc.extendedBack.actionToken = ADD_CONTACT_TOKEN;
     }
     else {
         // if max number of notes is reached, deactivate it (grayed-out)
-        // invalid = 0xFF
-        headerDesc.backTextAndAction.actionToken = 0xFF;
+        headerDesc.extendedBack.actionToken = NBGL_INVALID_TOKEN;
     }
     nbgl_layoutAddHeader(layoutContext, &headerDesc);
 

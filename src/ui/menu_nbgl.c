@@ -90,6 +90,7 @@ void ui_menu_main(void) {
 #endif  // TARGET_STAX
         }
     }
+    icon = &C_Check_32px;
     nbgl_useCaseHomeExt2(APPNAME,
                          &C_app_securenotes_64px,
                          "Create private notes and share them with trusted people",
